@@ -241,7 +241,7 @@ The application includes:
 Please refer to the following for a demonstration of the chatbot:
 
 - `screenshots/` directory: Includes images of the running application (e.g., input/output, streaming view).
-- [Demo Video Link](https://your-demo-video-url.com) – A short video showing live interaction with the chatbot.
+- [[Demo Video Link](https://your-demo-video-url.com)](https://drive.google.com/file/d/1QEUbsm_mHCMipdogMP5LRFqp-BU_uHJb/view?usp=drive_link) – A short video showing live interaction with the chatbot.
 
 ## 📄 License
 
