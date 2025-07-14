@@ -31,7 +31,7 @@ This project implements a complete RAG pipeline that can:
 ```
 rag-based-chatbot/
 ├── data/                    # Input documents
-│   └── sample_document.txt
+│   └── AI Training Document.pdf
 ├── chunks/                  # Processed document chunks  
 ├── vectordb/               # Vector database files
 ├── notebooks/              # Jupyter notebooks (optional)
@@ -64,7 +64,7 @@ pip install -r requirements.txt
 
 ### 2. Add Your Documents
 
-Place your documents (`.txt` files) in the `data/` directory. The system will automatically process them.
+Place your documents (`.pdf` files) in the `data/` directory. The system will automatically process them.
 
 ### 3. Run the Application
 
@@ -81,11 +81,10 @@ The application will:
 
 ### Vector Store Types
 - **FAISS**: Fast similarity search (default)
-- **ChromaDB**: Persistent vector database
 
 ### LLM Options
 - **Simple LLM**: Rule-based responses (default for demo)
-- **Transformer Models**: DialoGPT, GPT-2, DistilGPT-2
+- **Ollama Models**: mistral:7b, llama3.2:3b, phi3:mini, codellama:7b
 - **Custom Models**: Configure in `src/llm_handler.py`
 
 ### Embedding Models
@@ -108,7 +107,7 @@ The application will:
 - Handles persistence and loading
 
 ### LLM Handler (`src/llm_handler.py`)
-- Integrates with Hugging Face transformers
+- Integrates with Ollama
 - Supports model quantization for GPU efficiency
 - Implements streaming response generation
 - Creates RAG-optimized prompts
@@ -165,13 +164,6 @@ pipeline = RAGPipeline(
 )
 ```
 
-### GPU-Optimized LLM
-```python
-pipeline = RAGPipeline(
-    llm_model="microsoft/DialoGPT-medium",
-    use_simple_llm=False  # Use actual transformer model
-)
-```
 
 ### Document Processing Parameters
 ```python
@@ -185,18 +177,12 @@ processor = DocumentProcessor(
 
 ### Common Issues
 
-1. **CUDA/GPU Issues**
-   ```bash
-   # Install CPU-only PyTorch
-   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-   ```
-
-2. **Memory Issues**
+1. **Memory Issues**
    - Use `use_simple_llm=True` for testing
    - Reduce `chunk_size` and `k` parameters
    - Enable model quantization
 
-3. **Slow Performance**
+2. **Slow Performance**
    - Use FAISS instead of ChromaDB
    - Reduce number of retrieved documents
    - Use smaller embedding models
@@ -232,7 +218,7 @@ Modify `src/llm_handler.py` to add new models or change prompt templates.
 
 - ✅ Document preprocessing and chunking
 - ✅ Semantic embedding generation
-- ✅ Vector database (FAISS/ChromaDB) integration
+- ✅ Vector database (FAISS) integration
 - ✅ LLM integration with prompt optimization
 - ✅ Complete RAG pipeline implementation
 - ✅ Streamlit interface with streaming
