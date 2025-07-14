@@ -236,6 +236,13 @@ The application includes:
 - Pipeline statistics dashboard
 - Configurable retrieval parameters
 
+### 📷 Screenshots and Demo Video
+
+Please refer to the following for a demonstration of the chatbot:
+
+- `screenshots/` directory: Includes images of the running application (e.g., input/output, streaming view).
+- [Demo Video Link](https://your-demo-video-url.com) – A short video showing live interaction with the chatbot.
+
 ## 📄 License
 
 This project is for educational purposes as part of an NLP/RAG assessment.

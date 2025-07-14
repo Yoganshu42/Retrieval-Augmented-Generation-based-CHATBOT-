@@ -1,0 +1,8 @@
+streamlit
+sentence-transformers
+faiss-cpu
+pypdf2
+PyMuPDF
+ollama
+python-dotenv
+ollama pull llama3.2:3b
