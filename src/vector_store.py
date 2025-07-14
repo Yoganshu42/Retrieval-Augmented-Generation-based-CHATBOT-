@@ -10,8 +10,6 @@ from typing import List, Dict, Tuple, Optional
 from pathlib import Path
 import faiss
 from sentence_transformers import SentenceTransformer
-import chromadb
-from chromadb.config import Settings
 
 
 class VectorStore:
@@ -21,7 +19,7 @@ class VectorStore:
         
         Args:
             embedding_model: Name of the sentence transformer model
-            store_type: Type of vector store ("faiss" or "chroma")
+            store_type: Type of vector store ("faiss")
         """
         self.embedding_model_name = embedding_model
         self.store_type = store_type
@@ -32,12 +30,6 @@ class VectorStore:
         if store_type == "faiss":
             self.index = None
             self.chunks_metadata = []
-        elif store_type == "chroma":
-            self.chroma_client = chromadb.Client(Settings(
-                persist_directory="vectordb/chroma",
-                anonymized_telemetry=False
-            ))
-            self.collection = None
         
     def create_embeddings(self, texts: List[str]) -> np.ndarray:
         """
@@ -66,7 +58,7 @@ class VectorStore:
         
         print("Building FAISS index...")
         # Create FAISS index
-        self.index = faiss.IndexFlatIP(self.embedding_dim)  # Inner product similarity
+        self.index = faiss.IndexFlatIP(self.embedding_dim)  
         
         # Normalize embeddings for cosine similarity
         faiss.normalize_L2(embeddings)
@@ -87,43 +79,6 @@ class VectorStore:
             pickle.dump(self.chunks_metadata, f)
         
         print(f"FAISS index saved with {self.index.ntotal} vectors")
-    
-    def build_chroma_index(self, chunks: List[Dict[str, str]], collection_name: str = "rag_collection"):
-        """
-        Build ChromaDB collection from document chunks.
-        
-        Args:
-            chunks: List of document chunks
-            collection_name: Name of the collection
-        """
-        print("Building ChromaDB collection...")
-        
-        # Create or get collection
-        self.collection = self.chroma_client.get_or_create_collection(
-            name=collection_name,
-            metadata={"description": "RAG chatbot document collection"}
-        )
-        
-        # Prepare data
-        texts = [chunk['content'] for chunk in chunks]
-        ids = [chunk['chunk_id'] for chunk in chunks]
-        metadatas = [
-            {
-                'filename': chunk['filename'],
-                'chunk_index': chunk['chunk_index'],
-                'word_count': chunk['word_count']
-            }
-            for chunk in chunks
-        ]
-        
-        # Add to collection (embeddings are generated automatically)
-        self.collection.add(
-            documents=texts,
-            metadatas=metadatas,
-            ids=ids
-        )
-        
-        print(f"ChromaDB collection created with {len(texts)} documents")
     
     def load_faiss_index(self, load_path: str = "vectordb"):
         """
@@ -173,40 +128,6 @@ class VectorStore:
         
         return results
     
-    def search_chroma(self, query: str, k: int = 5) -> List[Dict[str, str]]:
-        """
-        Search ChromaDB collection for similar documents.
-        
-        Args:
-            query: Query string
-            k: Number of results to return
-            
-        Returns:
-            List of similar documents with scores
-        """
-        if self.collection is None:
-            raise ValueError("ChromaDB collection not loaded.")
-        
-        # Search
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=k
-        )
-        
-        formatted_results = []
-        for i in range(len(results['documents'][0])):
-            result = {
-                'content': results['documents'][0][i],
-                'chunk_id': results['ids'][0][i],
-                'filename': results['metadatas'][0][i]['filename'],
-                'chunk_index': results['metadatas'][0][i]['chunk_index'],
-                'word_count': results['metadatas'][0][i]['word_count'],
-                'similarity_score': 1 - results['distances'][0][i]  # Convert distance to similarity
-            }
-            formatted_results.append(result)
-        
-        return formatted_results
-    
     def search(self, query: str, k: int = 5) -> List[Dict[str, str]]:
         """
         Search for similar documents using the configured store type.
@@ -220,8 +141,6 @@ class VectorStore:
         """
         if self.store_type == "faiss":
             return self.search_faiss(query, k)
-        elif self.store_type == "chroma":
-            return self.search_chroma(query, k)
         else:
             raise ValueError(f"Unsupported store type: {self.store_type}")
 
@@ -243,19 +162,6 @@ def main():
     # Test search
     results = faiss_store.search("privacy policy", k=3)
     print("\nFAISS Search Results:")
-    for i, result in enumerate(results):
-        print(f"{i+1}. Score: {result['similarity_score']:.3f}")
-        print(f"   Content: {result['content'][:100]}...")
-        print()
-    
-    # Test ChromaDB
-    print("Testing ChromaDB vector store...")
-    chroma_store = VectorStore(store_type="chroma")
-    chroma_store.build_chroma_index(chunks)
-    
-    # Test search
-    results = chroma_store.search("privacy policy", k=3)
-    print("\nChromaDB Search Results:")
     for i, result in enumerate(results):
         print(f"{i+1}. Score: {result['similarity_score']:.3f}")
         print(f"   Content: {result['content'][:100]}...")

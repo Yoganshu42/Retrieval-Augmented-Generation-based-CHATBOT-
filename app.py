@@ -69,12 +69,12 @@ st.markdown("""
 def initialize_pipeline():
     """Initialize the RAG pipeline (cached for performance)."""
     try:
-        # Try Ollama first, fallback to simple LLM if Ollama is not available
+        # Initialize RAG pipeline with Ollama LLM
         pipeline = RAGPipeline(
             embedding_model="all-MiniLM-L6-v2",
             llm_model="llama3.2:3b",  # Default Ollama model
             vector_store_type="faiss",
-            use_simple_llm=False,  # Try Ollama first
+            use_simple_llm=False,
             ollama_base_url="http://localhost:11434"
         )
         
@@ -88,7 +88,7 @@ def initialize_pipeline():
                 use_simple_llm=True
             )
         
-        success = pipeline.initialize_from_documents(force_rebuild=True)
+        success = pipeline.initialize_from_documents(force_rebuild=False)
         
         if success:
             return pipeline
@@ -98,7 +98,7 @@ def initialize_pipeline():
             
     except Exception as e:
         st.error(f"Error initializing pipeline: {e}")
-        # Try fallback to simple LLM
+
         try:
             st.info("Attempting to initialize with simple LLM as fallback...")
             pipeline = RAGPipeline(
@@ -228,7 +228,7 @@ def main():
                     for chunk in answer_stream:
                         full_response += chunk
                         response_placeholder.markdown(full_response + "▌")
-                        time.sleep(0.05)  # Small delay for visual effect
+                        time.sleep(0.05)
                     
                     # Final response without cursor
                     response_placeholder.markdown(full_response)
@@ -239,7 +239,7 @@ def main():
                     display_message(answer, False)
                     full_response = answer
                 
-                # Display sources
+                
                 display_sources(sources)
                 
                 # Add assistant response to chat history

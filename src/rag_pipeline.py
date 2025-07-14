@@ -212,10 +212,10 @@ class RAGPipeline:
         if not self.is_initialized:
             raise ValueError("Pipeline not initialized. Call initialize_from_documents() first.")
         
-        # Step 1: Retrieve relevant documents
+        # Retrieve relevant documents
         retrieved_docs = self.retrieve_documents(user_query, k)
         
-        # Step 2: Generate answer
+        # Generate answer
         answer = self.generate_answer(user_query, retrieved_docs, stream)
         
         return answer, retrieved_docs
@@ -228,7 +228,7 @@ class RAGPipeline:
         """Reset the pipeline (useful for testing)."""
         self.is_initialized = False
         
-        # Clean up vector store
+        # Clean up vector storage
         vector_db_path = Path("vectordb")
         if vector_db_path.exists():
             import shutil

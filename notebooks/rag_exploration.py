@@ -150,7 +150,7 @@ def analyze_document_coverage():
     documents = processor.load_documents("../data")
     chunks = processor.chunk_documents(documents)
     
-    # Analyze coverage
+    # Analyze how much of the original documents is covered by chunks
     total_words = sum(len(doc['content'].split()) for doc in documents)
     chunk_words = sum(chunk['word_count'] for chunk in chunks)
     

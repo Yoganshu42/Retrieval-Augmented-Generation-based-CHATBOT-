@@ -107,10 +107,10 @@ class DocumentProcessor:
         # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text)
         
-        # Remove special characters but keep punctuation
+        # Remove special characters 
         text = re.sub(r'[^\w\s\.\,\!\?\;\:\-\(\)]', '', text)
         
-        # Strip leading/trailing whitespace
+        # Stripping whitespace
         text = text.strip()
         
         return text
@@ -167,7 +167,7 @@ class DocumentProcessor:
             prev_words = chunks[i-1].split()
             curr_words = chunks[i].split()
             
-            # Take last 'overlap' words from previous chunk
+            # Take last words from previous chunk
             overlap_words = prev_words[-self.overlap:] if len(prev_words) > self.overlap else prev_words
             
             # Combine with current chunk
@@ -197,7 +197,7 @@ class DocumentProcessor:
             # Add overlap
             overlapped_chunks = self.create_overlapping_chunks(chunks)
             
-            # Create chunk objects with metadata
+            # Create chunk objects 
             for i, chunk in enumerate(overlapped_chunks):
                 chunk_obj = {
                     'content': chunk,

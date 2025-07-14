@@ -24,7 +24,7 @@ class LLMHandler:
         self.base_url = base_url
         self.client = ollama.Client(host=base_url)
         
-        # Available models - these are popular Ollama models
+        # Using Ollama's built-in model
         self.available_models = {
             "llama3.2:3b": "llama3.2:3b",
             "llama3.2:1b": "llama3.2:1b", 
@@ -74,14 +74,14 @@ class LLMHandler:
         Returns:
             Formatted prompt string
         """
-        # Build context from retrieved chunks
+        # Build context from chunks
         context_parts = []
         for i, chunk in enumerate(retrieved_chunks):
             context_parts.append(f"Source {i+1}: {chunk['content']}")
         
         context = "\n\n".join(context_parts)
         
-        # Create prompt template
+        # prompt template
         prompt = f"""Based on the following context, please provide a helpful and accurate answer to the user's question. If the answer cannot be found in the context, please say so.
 
 Context:
@@ -282,7 +282,7 @@ def main():
     except Exception as e:
         print(f"Error testing Ollama LLM: {e}")
     
-    # Test simple LLM as fallback
+    # Test simple LLM
     print("\nTesting Simple LLM (fallback)...")
     simple_llm = SimpleLLM()
     
