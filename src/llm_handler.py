@@ -13,13 +13,8 @@ import time
 
 class LLMHandler:
     def __init__(self, model_name: str = "llama3.2:3b", base_url: str = "http://localhost:11434"):
-        """
-        Initialize Ollama LLM handler.
         
-        Args:
-            model_name: Name of the Ollama model to use
-            base_url: Base URL of the Ollama server
-        """
+        # Initialize Ollama LLM handler.
         self.model_name = model_name
         self.base_url = base_url
         self.client = ollama.Client(host=base_url)
@@ -64,16 +59,8 @@ class LLMHandler:
             raise
     
     def create_rag_prompt(self, query: str, retrieved_chunks: List[Dict[str, str]]) -> str:
-        """
-        Create a RAG prompt with retrieved context.
         
-        Args:
-            query: User query
-            retrieved_chunks: List of retrieved document chunks
-            
-        Returns:
-            Formatted prompt string
-        """
+        # Create a RAG prompt with retrieved context.
         # Build context from chunks
         context_parts = []
         for i, chunk in enumerate(retrieved_chunks):
@@ -99,17 +86,8 @@ Answer:"""
         max_tokens: int = 512, 
         temperature: float = 0.7
     ) -> str:
-        """
-        Generate a response from the Ollama model.
         
-        Args:
-            prompt: Input prompt
-            max_tokens: Maximum number of tokens to generate
-            temperature: Sampling temperature
-            
-        Returns:
-            Generated response
-        """
+        # Generate a response from the Ollama model.        
         try:
             response = self.client.generate(
                 model=self.model_name,
@@ -134,17 +112,8 @@ Answer:"""
         max_tokens: int = 512, 
         temperature: float = 0.7
     ) -> Iterator[str]:
-        """
-        Generate a streaming response from the Ollama model.
         
-        Args:
-            prompt: Input prompt
-            max_tokens: Maximum number of tokens to generate 
-            temperature: Sampling temperature
-            
-        Yields:
-            Generated tokens as they are produced
-        """
+        # Generate a streaming response from the Ollama model.
         try:
             stream = self.client.generate(
                 model=self.model_name,
@@ -172,17 +141,8 @@ Answer:"""
         retrieved_chunks: List[Dict[str, str]], 
         stream: bool = False
     ) -> str | Iterator[str]:
-        """
-        Answer a query using RAG approach with Ollama.
         
-        Args:
-            query: User query
-            retrieved_chunks: Retrieved document chunks
-            stream: Whether to stream the response
-            
-        Returns:
-            Generated answer (string or iterator)
-        """
+        # Answer a query using RAG approach with Ollama.
         prompt = self.create_rag_prompt(query, retrieved_chunks)
         
         if stream:
@@ -191,12 +151,8 @@ Answer:"""
             return self.generate_response(prompt)
     
     def list_available_models(self) -> List[str]:
-        """
-        List all available models in the Ollama instance.
         
-        Returns:
-            List of available model names
-        """
+        # List all available models in the Ollama instance.
         try:
             models = self.client.list()
             return [model['name'] for model in models['models']]
@@ -205,12 +161,7 @@ Answer:"""
             return []
     
     def check_health(self) -> bool:
-        """
-        Check if Ollama server is healthy and responsive.
-        
-        Returns:
-            True if server is healthy, False otherwise
-        """
+        # Check if Ollama server is healthy and responsive.
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=5)
             return response.status_code == 200
@@ -220,13 +171,13 @@ Answer:"""
 
 # Fallback simple LLM for testing
 class SimpleLLM:
-    """Simple rule-based LLM for testing when GPU models aren't available."""
+    # Simple rule-based LLM for testing when GPU models aren't available
     
     def __init__(self):
         self.model_name = "Simple Rule-based Model"
     
     def answer_query(self, query: str, retrieved_chunks: List[Dict[str, str]], stream: bool = False):
-        """Generate a simple response based on retrieved chunks."""
+        #Generate a simple response based on retrieved chunks
         if not retrieved_chunks:
             response = "I don't have enough information to answer your question."
         else:
@@ -249,7 +200,7 @@ class SimpleLLM:
 
 
 def main():
-    """Test the LLM handler."""
+    # Test the LLM handler
     # Test Ollama LLM first
     print("Testing Ollama LLM...")
     try:

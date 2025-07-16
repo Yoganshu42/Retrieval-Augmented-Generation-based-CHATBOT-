@@ -21,16 +21,8 @@ class RAGPipeline:
         use_simple_llm: bool = False,
         ollama_base_url: str = "http://localhost:11434"
     ):
-        """
-        Initialize RAG pipeline.
         
-        Args:
-            embedding_model: Name of the embedding model
-            llm_model: Name of the Ollama LLM model
-            vector_store_type: Type of vector store ("faiss" or "chroma")
-            use_simple_llm: Whether to use simple rule-based LLM
-            ollama_base_url: Base URL for Ollama API
-        """
+        # Initialize RAG pipeline.
         self.embedding_model = embedding_model
         self.llm_model = llm_model
         self.vector_store_type = vector_store_type
@@ -60,16 +52,8 @@ class RAGPipeline:
         data_dir: str = "data", 
         force_rebuild: bool = False
     ) -> bool:
-        """
-        Initialize the pipeline by processing documents and building vector store.
         
-        Args:
-            data_dir: Directory containing documents
-            force_rebuild: Whether to force rebuilding even if indexes exist
-            
-        Returns:
-            Success status
-        """
+        # Initialize the pipeline by processing documents and building vector store.
         try:
             print("Initializing RAG Pipeline...")
             
@@ -128,7 +112,7 @@ class RAGPipeline:
         return False
     
     def _load_existing_pipeline(self) -> bool:
-        """Load existing pipeline from saved indexes."""
+        # Load existing pipeline from saved indexes
         try:
             # Load vector store
             if self.vector_store_type == "faiss":
@@ -152,22 +136,15 @@ class RAGPipeline:
             return False
     
     def _save_pipeline_config(self):
-        """Save pipeline configuration."""
+        # Save pipeline configuration
         config_path = Path("vectordb") / "pipeline_config.json"
         with open(config_path, 'w') as f:
             json.dump(self.stats, f, indent=2)
     
     def retrieve_documents(self, query: str, k: int = 5) -> List[Dict[str, str]]:
-        """
-        Retrieve relevant documents for a query.
-        
-        Args:
-            query: User query
-            k: Number of documents to retrieve
-            
-        Returns:
-            List of relevant documents
-        """
+
+        # Retrieve relevant documents for a query.
+
         if not self.is_initialized:
             raise ValueError("Pipeline not initialized. Call initialize_from_documents() first.")
         
@@ -179,17 +156,9 @@ class RAGPipeline:
         retrieved_docs: List[Dict[str, str]], 
         stream: bool = False
     ) -> str | Iterator[str]:
-        """
-        Generate answer using LLM.
         
-        Args:
-            query: User query
-            retrieved_docs: Retrieved documents
-            stream: Whether to stream response
-            
-        Returns:
-            Generated answer
-        """
+        # Generate answer using LLM.
+        
         return self.llm_handler.answer_query(query, retrieved_docs, stream)
     
     def query(
@@ -198,17 +167,8 @@ class RAGPipeline:
         k: int = 5, 
         stream: bool = False
     ) -> Tuple[str | Iterator[str], List[Dict[str, str]]]:
-        """
-        Complete RAG query pipeline.
         
-        Args:
-            user_query: User's question
-            k: Number of documents to retrieve
-            stream: Whether to stream response
-            
-        Returns:
-            Tuple of (answer, source_documents)
-        """
+        # Complete RAG query pipeline.
         if not self.is_initialized:
             raise ValueError("Pipeline not initialized. Call initialize_from_documents() first.")
         
@@ -242,7 +202,7 @@ class RAGPipeline:
 
 
 def main():
-    """Test the RAG pipeline."""
+    # Test the RAG pipeline
     print("Testing RAG Pipeline...")
     
     # Initialize pipeline with simple LLM for testing

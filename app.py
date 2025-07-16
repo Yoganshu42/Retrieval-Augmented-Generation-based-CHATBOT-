@@ -67,7 +67,7 @@ st.markdown("""
 
 @st.cache_resource
 def initialize_pipeline():
-    """Initialize the RAG pipeline (cached for performance)."""
+    # Initialize the RAG pipeline (cached for performance
     try:
         # Initialize RAG pipeline with Ollama LLM
         pipeline = RAGPipeline(
@@ -116,7 +116,7 @@ def initialize_pipeline():
 
 
 def display_message(message, is_user=True):
-    """Display a chat message with styling."""
+    # Display a chat message
     css_class = "user-message" if is_user else "bot-message"
     icon = "👤" if is_user else "🤖"
     
@@ -129,7 +129,7 @@ def display_message(message, is_user=True):
 
 
 def display_sources(sources):
-    """Display source documents."""
+    # Display source documents
     if sources:
         st.markdown("**📚 Sources:**")
         for i, source in enumerate(sources[:3]):  # Show top 3 sources
@@ -139,7 +139,7 @@ def display_sources(sources):
 
 
 def main():
-    """Main Streamlit application."""
+    # Main Streamlit application
     
     # Header
     st.markdown('<h1 class="main-header">🤖 RAG-Powered Chatbot</h1>', unsafe_allow_html=True)

@@ -14,13 +14,8 @@ from sentence_transformers import SentenceTransformer
 
 class VectorStore:
     def __init__(self, embedding_model: str = "all-MiniLM-L6-v2", store_type: str = "faiss"):
-        """
-        Initialize vector store.
         
-        Args:
-            embedding_model: Name of the sentence transformer model
-            store_type: Type of vector store ("faiss")
-        """
+        # Initialize vector store.
         self.embedding_model_name = embedding_model
         self.store_type = store_type
         self.model = SentenceTransformer(embedding_model)
@@ -32,26 +27,14 @@ class VectorStore:
             self.chunks_metadata = []
         
     def create_embeddings(self, texts: List[str]) -> np.ndarray:
-        """
-        Create embeddings for a list of texts.
         
-        Args:
-            texts: List of text strings
-            
-        Returns:
-            Numpy array of embeddings
-        """
+        # Create embeddings for a list of texts.
         embeddings = self.model.encode(texts, convert_to_numpy=True, show_progress_bar=True)
         return embeddings
     
     def build_faiss_index(self, chunks: List[Dict[str, str]], save_path: str = "vectordb"):
-        """
-        Build FAISS index from document chunks.
         
-        Args:
-            chunks: List of document chunks
-            save_path: Path to save the index
-        """
+        # Build FAISS index from document chunks.
         print("Creating embeddings...")
         texts = [chunk['content'] for chunk in chunks]
         embeddings = self.create_embeddings(texts)
@@ -81,12 +64,7 @@ class VectorStore:
         print(f"FAISS index saved with {self.index.ntotal} vectors")
     
     def load_faiss_index(self, load_path: str = "vectordb"):
-        """
-        Load FAISS index from disk.
-        
-        Args:
-            load_path: Path to load the index from
-        """
+        # Load FAISS index and metadata from disk.
         load_path = Path(load_path)
         
         # Load index
@@ -99,16 +77,9 @@ class VectorStore:
         print(f"FAISS index loaded with {self.index.ntotal} vectors")
     
     def search_faiss(self, query: str, k: int = 5) -> List[Dict[str, str]]:
-        """
-        Search FAISS index for similar documents.
         
-        Args:
-            query: Query string
-            k: Number of results to return
-            
-        Returns:
-            List of similar documents with scores
-        """
+        # Search FAISS index for similar documents.
+    
         if self.index is None:
             raise ValueError("FAISS index not loaded. Call load_faiss_index() first.")
         
@@ -129,16 +100,8 @@ class VectorStore:
         return results
     
     def search(self, query: str, k: int = 5) -> List[Dict[str, str]]:
-        """
-        Search for similar documents using the configured store type.
         
-        Args:
-            query: Query string
-            k: Number of results to return
-            
-        Returns:
-            List of similar documents with scores
-        """
+        # Search for similar documents using the configured store type.
         if self.store_type == "faiss":
             return self.search_faiss(query, k)
         else:
@@ -146,7 +109,7 @@ class VectorStore:
 
 
 def main():
-    """Test the vector store."""
+    # Test the vector store
     from document_processor import DocumentProcessor
     
     # Process documents first

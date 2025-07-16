@@ -14,28 +14,17 @@ import io
 
 class DocumentProcessor:
     def __init__(self, chunk_size: int = 200, overlap: int = 50):
-        """
-        Initialize document processor.
         
-        Args:
-            chunk_size: Target number of words per chunk
-            overlap: Number of words to overlap between chunks
-        """
+        # Initialize document processor.
+        
         self.chunk_size = chunk_size
         self.overlap = overlap
         self.encoding = tiktoken.get_encoding("cl100k_base")
     
     def load_documents(self, data_dir: str) -> List[Dict[str, str]]:
-        """
-        Load all documents from the data directory.
-        Supports both .txt and .pdf files.
         
-        Args:
-            data_dir: Path to directory containing documents
-            
-        Returns:
-            List of documents with metadata
-        """
+        # Load documents from the data directory.
+        
         documents = []
         data_path = Path(data_dir)
         
@@ -57,7 +46,7 @@ class DocumentProcessor:
         for file_path in data_path.glob("*.pdf"):
             try:
                 content = self._extract_pdf_content(file_path)
-                if content.strip():  # Only add if content is not empty
+                if content.strip(): 
                     documents.append({
                         'content': content,
                         'filename': file_path.name,
@@ -70,15 +59,7 @@ class DocumentProcessor:
         return documents
     
     def _extract_pdf_content(self, file_path: Path) -> str:
-        """
-        Extract text content from a PDF file.
         
-        Args:
-            file_path: Path to the PDF file
-            
-        Returns:
-            Extracted text content
-        """
         content = ""
         try:
             with open(file_path, 'rb') as f:
@@ -95,15 +76,8 @@ class DocumentProcessor:
         return content
     
     def clean_text(self, text: str) -> str:
-        """
-        Clean and normalize text content.
         
-        Args:
-            text: Raw text content
-            
-        Returns:
-            Cleaned text
-        """
+        # Clean text content.
         # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text)
         
@@ -116,16 +90,9 @@ class DocumentProcessor:
         return text
     
     def sentence_aware_split(self, text: str, max_words: int) -> List[str]:
-        """
-        Split text into chunks while preserving sentence boundaries.
         
-        Args:
-            text: Text to split
-            max_words: Maximum words per chunk
-            
-        Returns:
-            List of text chunks
-        """
+        # Split text into chunks while preserving sentence boundaries.
+        
         sentences = re.split(r'(?<=[.!?])\s+', text)
         chunks = []
         current_chunk = []
@@ -149,15 +116,9 @@ class DocumentProcessor:
         return chunks
     
     def create_overlapping_chunks(self, chunks: List[str]) -> List[str]:
-        """
-        Add overlap between consecutive chunks.
         
-        Args:
-            chunks: List of text chunks
-            
-        Returns:
-            List of overlapping chunks
-        """
+        # Add overlap between consecutive chunks.
+      
         if len(chunks) <= 1:
             return chunks
         
@@ -177,15 +138,7 @@ class DocumentProcessor:
         return overlapped_chunks
     
     def chunk_documents(self, documents: List[Dict[str, str]]) -> List[Dict[str, str]]:
-        """
-        Chunk documents into smaller segments.
         
-        Args:
-            documents: List of documents to chunk
-            
-        Returns:
-            List of document chunks with metadata
-        """
         all_chunks = []
         
         for doc in documents:
@@ -212,13 +165,7 @@ class DocumentProcessor:
         return all_chunks
     
     def save_chunks(self, chunks: List[Dict[str, str]], output_dir: str):
-        """
-        Save processed chunks to files.
-        
-        Args:
-            chunks: List of chunks to save
-            output_dir: Directory to save chunks
-        """
+                
         output_path = Path(output_dir)
         output_path.mkdir(exist_ok=True)
         
@@ -240,7 +187,7 @@ class DocumentProcessor:
 
 
 def main():
-    """Test the document processor."""
+    # Test the document processor
     processor = DocumentProcessor(chunk_size=200, overlap=50)
     
     # Load documents
