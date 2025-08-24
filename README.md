@@ -22,17 +22,18 @@ This chatbot can load documents, chunk them with overlap, embed them, store in F
 
 ## 📂 Project Structure
 
+```text
 rag-chatbot/
 │
-├── app.py # Streamlit UI
-├── rag_chatbot.Modelfile # Custom Ollama system prompt
-├── rag_pipeline.py # RAG pipeline: retrieval → prompt → Ollama
-├── vector_db.py # FAISS index build + search + persistence
-├── data_chunking.py # Semantic chunking + embeddings
-├── data_loading_and_cleaning.py# Document ingestion & cleaning
-├── pyproject.toml # uv project dependencies
-└── uv.lock # locked dependencies
-
+├── app.py                      # Streamlit UI
+├── rag_chatbot.Modelfile        # Custom Ollama system prompt
+├── rag_pipeline.py              # RAG pipeline: retrieval → prompt → Ollama
+├── vector_db.py                 # FAISS index build + search + persistence
+├── data_chunking.py             # Semantic chunking + embeddings
+├── data_loading_and_cleaning.py # Document ingestion & cleaning
+├── pyproject.toml               # uv project dependencies
+└── uv.lock                      # locked dependencies
+```
 yaml
 Copy
 Edit
@@ -71,8 +72,7 @@ Edit
 uv run streamlit run app.py
 Open your browser at http://localhost:8501.
 ```
-📸 Screenshots
-Chat Interface
+📸 ###Chat Interface
 
 User messages (blue box)
 
