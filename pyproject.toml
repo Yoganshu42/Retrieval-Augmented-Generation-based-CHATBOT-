@@ -1,0 +1,16 @@
+[project]
+name = "my-rag-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11.9"
+dependencies = [
+    "faiss-cpu>=1.12.0",
+    "fitz>=0.0.1.dev2",
+    "nltk>=3.9.1",
+    "numpy>=2.3.2",
+    "ollama>=0.5.3",
+    "scikit-learn>=1.7.1",
+    "sentence-transformers>=5.1.0",
+    "streamlit>=1.48.1",
+]
