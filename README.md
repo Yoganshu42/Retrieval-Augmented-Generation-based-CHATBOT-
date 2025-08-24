@@ -70,7 +70,7 @@ Copy
 Edit
 uv run streamlit run app.py
 Open your browser at http://localhost:8501.
-
+```
 📸 Screenshots
 Chat Interface
 
