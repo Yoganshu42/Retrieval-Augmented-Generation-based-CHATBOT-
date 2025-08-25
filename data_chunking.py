@@ -38,7 +38,8 @@ def semantic_chunking(sentences,chunk_size = 200, overlap = 50):
     return chunks
     
 chunks = semantic_chunking(sentences,chunk_size = 200, overlap = 50)
-print(f"Generated: {len(chunks)} chunks.")
+# print(f"Generated: {len(chunks)} chunks.")
+print("Data Chunking Done!✅")
 
 def embed_sentences(chunks):
      # Embedding the sentence chunks for converting to vector data
@@ -46,5 +47,6 @@ def embed_sentences(chunks):
      vecs = model.encode(chunks, normalize_embeddings = True) 
      return np.array(vecs) 
 embeddings = embed_sentences(chunks)
-print(f"Embeddings:{embeddings.shape}")
+# print(f"Embeddings:{embeddings.shape}")
+print("Data Embedding Done!✅")
 

@@ -1,6 +1,7 @@
 import fitz
 import re
 
+print("Loading Data... 📄")
 path = r"C:\Users\yogan\OneDrive\Desktop\my rag project\AI Training Document.pdf"
 # Extract raw text from the document
 def extract_text_from_document(path):
@@ -9,7 +10,7 @@ def extract_text_from_document(path):
         for page in file:
             text += page.get_text()
         return text
-
+print("Document Text Extraction Done!✅")
 extracted_text = extract_text_from_document(path)
 # print(f"Contents: {extracted_text}")
 
@@ -33,5 +34,6 @@ def clean_text(extracted_text):
     return text
 
 cleaned_text = clean_text(extracted_text)
+print("Document Text Cleaning Succesfull!✅")
 # print(f"{cleaned_text}")
 

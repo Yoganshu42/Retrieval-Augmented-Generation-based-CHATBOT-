@@ -16,7 +16,7 @@ def search_faiss(query, top_k = 5):
     sims, idx = index.search(q_emb.astype("float32"), top_k)
     results = [(chunks[i], float(sims[0][j])) for j,i in enumerate(idx[0])]
     return results
-
+print("FAISS Indexing Done!✅")
 
 
 ## For Testing the working of FAISS Index
