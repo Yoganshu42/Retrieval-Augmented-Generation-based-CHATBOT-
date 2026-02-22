@@ -3,10 +3,9 @@ Vector store module for RAG chatbot.
 Handles embedding generation and vector database operations.
 """
 
-import os
 import pickle
 import numpy as np
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Optional
 from pathlib import Path
 import faiss
 from sentence_transformers import SentenceTransformer
@@ -32,9 +31,12 @@ class VectorStore:
         embeddings = self.model.encode(texts, convert_to_numpy=True, show_progress_bar=True)
         return embeddings
     
-    def build_faiss_index(self, chunks: List[Dict[str, str]], save_path: str = "vectordb"):
+    def build_faiss_index(self, chunks: List[Dict[str, str]], save_path: Optional[str] = "vectordb"):
         
         # Build FAISS index from document chunks.
+        if not chunks:
+            raise ValueError("Cannot build FAISS index with empty chunks.")
+
         print("Creating embeddings...")
         texts = [chunk['content'] for chunk in chunks]
         embeddings = self.create_embeddings(texts)
@@ -52,16 +54,19 @@ class VectorStore:
         # Store metadata
         self.chunks_metadata = chunks
         
-        # Save index and metadata
-        save_path = Path(save_path)
-        save_path.mkdir(exist_ok=True)
-        
-        faiss.write_index(self.index, str(save_path / "faiss_index.index"))
-        
-        with open(save_path / "chunks_metadata.pkl", "wb") as f:
-            pickle.dump(self.chunks_metadata, f)
-        
-        print(f"FAISS index saved with {self.index.ntotal} vectors")
+        if save_path:
+            # Save index and metadata
+            save_path_obj = Path(save_path)
+            save_path_obj.mkdir(exist_ok=True)
+            
+            faiss.write_index(self.index, str(save_path_obj / "faiss_index.index"))
+            
+            with open(save_path_obj / "chunks_metadata.pkl", "wb") as f:
+                pickle.dump(self.chunks_metadata, f)
+
+            print(f"FAISS index saved with {self.index.ntotal} vectors")
+        else:
+            print(f"FAISS index built in memory with {self.index.ntotal} vectors")
     
     def load_faiss_index(self, load_path: str = "vectordb"):
         # Load FAISS index and metadata from disk.
@@ -92,7 +97,7 @@ class VectorStore:
         
         results = []
         for score, idx in zip(scores[0], indices[0]):
-            if idx < len(self.chunks_metadata):
+            if 0 <= idx < len(self.chunks_metadata):
                 result = self.chunks_metadata[idx].copy()
                 result['similarity_score'] = float(score)
                 results.append(result)

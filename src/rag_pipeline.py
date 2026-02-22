@@ -3,7 +3,7 @@ RAG Pipeline module for the chatbot.
 Orchestrates document retrieval and response generation.
 """
 
-from typing import Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 from pathlib import Path
 import json
 from document_processor import DocumentProcessor
@@ -51,6 +51,46 @@ class RAGPipeline:
         self.stats['vector_store_type'] = self.vector_store_type
         self.stats['embedding_model'] = self.embedding_model
         self.stats['llm_model'] = self.llm_model if not self.use_simple_llm else "Simple Rule-based Model"
+
+    def _initialize_from_document_list(self, documents: List[Dict[str, str]], persist_artifacts: bool) -> bool:
+        """Initialize vector index from an in-memory document list."""
+        if not documents:
+            print("No documents found!")
+            return False
+
+        self.stats['total_documents'] = len(documents)
+        print(f"Loaded {len(documents)} documents")
+
+        print("Step 2: Chunking documents...")
+        chunks = self.document_processor.chunk_documents(documents)
+        self.stats['total_chunks'] = len(chunks)
+        print(f"Created {len(chunks)} chunks")
+
+        if not chunks:
+            print("No chunks were generated from the provided documents.")
+            return False
+
+        # Save chunk artifacts only when using the local data-directory pipeline.
+        if persist_artifacts:
+            self.document_processor.save_chunks(chunks, "chunks")
+
+        print("Step 3: Building vector store...")
+        if self.vector_store_type == "faiss":
+            save_path = "vectordb" if persist_artifacts else None
+            self.vector_store.build_faiss_index(chunks, save_path=save_path)
+        elif self.vector_store_type == "chroma":
+            self.vector_store.build_chroma_index(chunks)
+        else:
+            raise ValueError(f"Unsupported vector store type: {self.vector_store_type}")
+
+        self._apply_runtime_configuration_to_stats()
+
+        if persist_artifacts:
+            self._save_pipeline_config()
+
+        self.is_initialized = True
+        print("RAG Pipeline initialized successfully!")
+        return True
     
     def initialize_from_documents(
         self, 
@@ -70,39 +110,21 @@ class RAGPipeline:
             # Step 1: Load and process documents
             print("Step 1: Loading documents...")
             documents = self.document_processor.load_documents(data_dir)
-            if not documents:
-                print("No documents found!")
-                return False
-            
-            self.stats['total_documents'] = len(documents)
-            print(f"Loaded {len(documents)} documents")
-            
-            # Step 2: Chunk documents
-            print("Step 2: Chunking documents...")
-            chunks = self.document_processor.chunk_documents(documents)
-            self.stats['total_chunks'] = len(chunks)
-            print(f"Created {len(chunks)} chunks")
-            
-            # Save chunks
-            self.document_processor.save_chunks(chunks, "chunks")
-            
-            # Step 3: Build vector store
-            print("Step 3: Building vector store...")
-            if self.vector_store_type == "faiss":
-                self.vector_store.build_faiss_index(chunks)
-            elif self.vector_store_type == "chroma":
-                self.vector_store.build_chroma_index(chunks)
-            
-            # Step 4: Save pipeline configuration
-            self._apply_runtime_configuration_to_stats()
-            self._save_pipeline_config()
-            
-            self.is_initialized = True
-            print("RAG Pipeline initialized successfully!")
-            return True
+            return self._initialize_from_document_list(documents, persist_artifacts=True)
             
         except Exception as e:
             print(f"Error initializing pipeline: {e}")
+            return False
+
+    def initialize_from_uploaded_files(self, uploaded_files: List[Any]) -> bool:
+        """Initialize the pipeline directly from uploaded frontend files."""
+        try:
+            print("Initializing RAG Pipeline from uploaded files...")
+            print("Step 1: Loading uploaded documents...")
+            documents = self.document_processor.load_uploaded_documents(uploaded_files)
+            return self._initialize_from_document_list(documents, persist_artifacts=False)
+        except Exception as e:
+            print(f"Error initializing from uploaded files: {e}")
             return False
     
     def _check_existing_indexes(self) -> bool:

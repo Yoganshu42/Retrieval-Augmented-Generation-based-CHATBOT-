@@ -1,17 +1,19 @@
 """
-Streamlit app for RAG-based chatbot.
-Provides a user-friendly interface with real-time streaming responses.
+Streamlit app for a RAG-based chatbot.
+Builds the knowledge base from user-uploaded files.
 """
 
-import streamlit as st
-import time
+import hashlib
+import os
 import sys
+from typing import Iterable
+
+import streamlit as st
 
 # Add src directory to path
-sys.path.append('src')
+sys.path.append("src")
 
 from rag_pipeline import RAGPipeline
-import os
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -28,253 +30,245 @@ DEFAULT_OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 DEFAULT_USE_SIMPLE_LLM = env_flag("USE_SIMPLE_LLM", True)
 
 
-# Page configuration
-st.set_page_config(
-    page_title="RAG Chatbot",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def initialize_session_state() -> None:
+    if "pipeline" not in st.session_state:
+        st.session_state.pipeline = None
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .chat-message {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-        display: flex;
-        flex-direction: column;
-    }
-    .user-message {
-        background-color: #e3f2fd;
-        border-left: 4px solid #2196f3;
-    }
-    .bot-message {
-        background-color: #f5f5f5;
-        border-left: 4px solid #4caf50;
-    }
-    .source-doc {
-        background-color: #fff3e0;
-        border: 1px solid #ff9800;
-        padding: 0.5rem;
-        border-radius: 0.25rem;
-        margin-top: 0.5rem;
-        font-size: 0.8rem;
-    }
-    .stats-container {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border: 1px solid #dee2e6;
-    }
-</style>
-""", unsafe_allow_html=True)
+    if "pipeline_signature" not in st.session_state:
+        st.session_state.pipeline_signature = None
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
 
-@st.cache_resource
-def initialize_pipeline():
-    # Initialize the RAG pipeline (cached for performance).
+def reset_chat_history() -> None:
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": (
+                "Upload files in the sidebar, then ask questions. "
+                "I answer using only the uploaded document context."
+            ),
+            "sources": [],
+        }
+    ]
+
+
+def compute_files_signature(uploaded_files: Iterable) -> str:
+    digest = hashlib.sha256()
+
+    for uploaded_file in uploaded_files:
+        digest.update(uploaded_file.name.encode("utf-8"))
+        digest.update(str(uploaded_file.size).encode("utf-8"))
+        digest.update(uploaded_file.getvalue())
+
+    return digest.hexdigest()
+
+
+def normalize_stream_response(stream_response) -> str:
+    if isinstance(stream_response, str):
+        return stream_response
+
+    if isinstance(stream_response, list):
+        return "".join(item for item in stream_response if isinstance(item, str))
+
+    return str(stream_response)
+
+
+def initialize_pipeline_from_uploads(uploaded_files, use_simple_llm: bool):
     try:
-        if DEFAULT_USE_SIMPLE_LLM:
+        if use_simple_llm:
             pipeline = RAGPipeline(
                 embedding_model=DEFAULT_EMBEDDING_MODEL,
                 vector_store_type=DEFAULT_VECTOR_STORE,
-                use_simple_llm=True
+                use_simple_llm=True,
             )
         else:
-            # Initialize RAG pipeline with Ollama LLM.
             pipeline = RAGPipeline(
                 embedding_model=DEFAULT_EMBEDDING_MODEL,
                 llm_model=DEFAULT_OLLAMA_MODEL,
                 vector_store_type=DEFAULT_VECTOR_STORE,
                 use_simple_llm=False,
-                ollama_base_url=DEFAULT_OLLAMA_BASE_URL
+                ollama_base_url=DEFAULT_OLLAMA_BASE_URL,
             )
 
-            # Check if Ollama is available.
             if not pipeline.llm_handler.check_health():
-                st.warning("Ollama server is not running. Falling back to simple LLM. To use Ollama, please start it with 'ollama serve'.")
+                st.warning(
+                    "Ollama is not reachable. Falling back to simple LLM mode."
+                )
                 pipeline = RAGPipeline(
                     embedding_model=DEFAULT_EMBEDDING_MODEL,
                     vector_store_type=DEFAULT_VECTOR_STORE,
-                    use_simple_llm=True
+                    use_simple_llm=True,
                 )
 
-        success = pipeline.initialize_from_documents(force_rebuild=False)
+        success = pipeline.initialize_from_uploaded_files(uploaded_files)
 
         if success:
             return pipeline
-        else:
-            st.error("Failed to initialize pipeline!")
-            return None
 
-    except Exception as e:
-        st.error(f"Error initializing pipeline: {e}")
+        st.error("Failed to build knowledge base from uploaded files.")
+        return None
 
-        try:
-            st.info("Attempting to initialize with simple LLM as fallback...")
-            pipeline = RAGPipeline(
-                embedding_model=DEFAULT_EMBEDDING_MODEL,
-                vector_store_type=DEFAULT_VECTOR_STORE,
-                use_simple_llm=True
-            )
-            success = pipeline.initialize_from_documents(force_rebuild=False)
-            if success:
-                return pipeline
-        except Exception as fallback_error:
-            st.error(f"Fallback initialization also failed: {fallback_error}")
-        
+    except Exception as error:
+        st.error(f"Error initializing pipeline: {error}")
         return None
 
 
-def display_message(message, is_user=True):
-    # Display a chat message
-    css_class = "user-message" if is_user else "bot-message"
-    icon = "👤" if is_user else "🤖"
-    
-    st.markdown(f"""
-    <div class="chat-message {css_class}">
-        <strong>{icon} {'You' if is_user else 'Assistant'}:</strong>
-        <div style="margin-top: 0.5rem;">{message}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
 def display_sources(sources):
-    # Display source documents
-    if sources:
-        st.markdown("**📚 Sources:**")
-        for i, source in enumerate(sources[:3]):  # Show top 3 sources
-            with st.expander(f"Source {i+1}: {source['filename']} (Score: {source['similarity_score']:.3f})"):
-                st.text(source['content'][:500] + "..." if len(source['content']) > 500 else source['content'])
-                st.caption(f"Chunk: {source['chunk_id']} | Words: {source['word_count']}")
+    if not sources:
+        return
+
+    st.markdown("**Sources**")
+    for index, source in enumerate(sources[:3], start=1):
+        filename = source.get("filename", "unknown")
+        similarity = source.get("similarity_score", 0.0)
+        chunk_id = source.get("chunk_id", "n/a")
+        word_count = source.get("word_count", "n/a")
+        content = source.get("content", "")
+
+        with st.expander(f"Source {index}: {filename} (score: {similarity:.3f})"):
+            st.text(content[:500] + "..." if len(content) > 500 else content)
+            st.caption(f"Chunk: {chunk_id} | Words: {word_count}")
 
 
 def main():
-    # Main Streamlit application
-    
-    # Header
-    st.markdown('<h1 class="main-header">🤖 RAG-Powered Chatbot</h1>', unsafe_allow_html=True)
-    st.markdown("---")
-    
-    # Initialize pipeline
-    with st.spinner("Initializing RAG pipeline..."):
-        pipeline = initialize_pipeline()
-    
-    if pipeline is None:
-        st.error("Failed to initialize the chatbot. Please check your setup.")
-        st.stop()
-    
-    # Sidebar
+    st.set_page_config(
+        page_title="RAG Chatbot",
+        page_icon=":robot_face:",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    st.title("RAG Chatbot")
+    st.caption("Upload one or more files of any type, then ask questions about them.")
+
+    initialize_session_state()
+    if not st.session_state.messages:
+        reset_chat_history()
+
     with st.sidebar:
-        st.header("⚙️ Configuration")
-        
-        # Pipeline stats
-        stats = pipeline.get_stats()
-        st.markdown('<div class="stats-container">', unsafe_allow_html=True)
-        st.markdown("### 📊 Pipeline Statistics")
-        st.write(f"**Model:** {stats['llm_model']}")
-        st.write(f"**Embeddings:** {stats['embedding_model']}")
-        st.write(f"**Vector Store:** {stats['vector_store_type'].upper()}")
-        st.write(f"**Documents:** {stats['total_documents']}")
-        st.write(f"**Chunks:** {stats['total_chunks']}")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        # Settings
-        st.header("🎛️ Settings")
+        st.header("Knowledge Base")
+        uploaded_files = st.file_uploader(
+            "Upload files (all file types accepted)",
+            accept_multiple_files=True,
+        )
+
+        use_simple_llm = st.checkbox(
+            "Use simple LLM (recommended for Streamlit Cloud)",
+            value=DEFAULT_USE_SIMPLE_LLM,
+        )
+
+        st.header("Chat Settings")
         k_docs = st.slider("Documents to retrieve", 1, 10, 5)
         stream_response = st.checkbox("Stream responses", value=True)
-        
+
+        rebuild_clicked = st.button(
+            "Build or Refresh Knowledge Base",
+            type="primary",
+            disabled=not uploaded_files,
+        )
+        clear_chat_clicked = st.button("Clear Chat", type="secondary")
+        reset_pipeline_clicked = st.button("Reset Pipeline", type="secondary")
+
+    if clear_chat_clicked:
+        reset_chat_history()
+        st.rerun()
+
+    if reset_pipeline_clicked:
+        st.session_state.pipeline = None
+        st.session_state.pipeline_signature = None
+        reset_chat_history()
+        st.rerun()
+
+    if not uploaded_files:
+        st.info("Upload at least one file in the sidebar to build the knowledge base.")
+        st.stop()
+
+    files_signature = compute_files_signature(uploaded_files)
+    config_signature = (
+        f"{files_signature}|simple={use_simple_llm}|model={DEFAULT_OLLAMA_MODEL}|"
+        f"base_url={DEFAULT_OLLAMA_BASE_URL}|embed={DEFAULT_EMBEDDING_MODEL}|"
+        f"store={DEFAULT_VECTOR_STORE}"
+    )
+
+    needs_rebuild = (
+        rebuild_clicked
+        or st.session_state.pipeline is None
+        or st.session_state.pipeline_signature != config_signature
+    )
+
+    if needs_rebuild:
+        with st.spinner("Processing uploaded files and building vector index..."):
+            pipeline = initialize_pipeline_from_uploads(uploaded_files, use_simple_llm)
+
+        if pipeline is None:
+            st.stop()
+
+        st.session_state.pipeline = pipeline
+        st.session_state.pipeline_signature = config_signature
+        reset_chat_history()
+        st.success("Knowledge base is ready.")
+
+    pipeline = st.session_state.pipeline
+    if pipeline is None:
+        st.error("Pipeline is not initialized.")
+        st.stop()
+
+    stats = pipeline.get_stats()
+    with st.sidebar:
         st.markdown("---")
-        
-        # Clear chat button
-        if st.button("🗑️ Clear Chat", type="secondary"):
-            st.session_state.messages = []
-            st.rerun()
-        
-        # Reset pipeline button
-        if st.button("🔄 Reset Pipeline", type="secondary"):
-            st.cache_resource.clear()
-            st.session_state.messages = []
-            st.rerun()
-    
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-        # Add welcome message
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": "Hello! I'm your RAG-powered assistant. I can answer questions based on the documents in the knowledge base. What would you like to know?",
-            "sources": []
-        })
-    
-    # Display chat history
+        st.subheader("Pipeline Statistics")
+        st.write(f"Model: {stats.get('llm_model', 'n/a')}")
+        st.write(f"Embeddings: {stats.get('embedding_model', 'n/a')}")
+        st.write(f"Vector Store: {str(stats.get('vector_store_type', 'n/a')).upper()}")
+        st.write(f"Documents: {stats.get('total_documents', 0)}")
+        st.write(f"Chunks: {stats.get('total_chunks', 0)}")
+
     for message in st.session_state.messages:
-        display_message(message["content"], message["role"] == "user")
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
         if message["role"] == "assistant" and message.get("sources"):
             display_sources(message["sources"])
-    
-    # Chat input
-    if prompt := st.chat_input("Ask me anything about the documents..."):
-        # Add user message to chat history
+
+    if prompt := st.chat_input("Ask a question about your uploaded files..."):
         st.session_state.messages.append({"role": "user", "content": prompt, "sources": []})
-        display_message(prompt, True)
-        
-        # Generate response
+
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
         try:
-            with st.spinner("Thinking..."):
+            with st.chat_message("assistant"):
                 if stream_response:
-                    # Streaming response
                     answer_stream, sources = pipeline.query(prompt, k=k_docs, stream=True)
-                    
-                    # Create placeholder for streaming
-                    response_placeholder = st.empty()
-                    full_response = ""
-                    
-                    # Display bot icon
-                    st.markdown("🤖 **Assistant:**")
-                    
-                    # Stream the response
-                    for chunk in answer_stream:
-                        full_response += chunk
-                        response_placeholder.markdown(full_response + "▌")
-                        time.sleep(0.05)
-                    
-                    # Final response without cursor
-                    response_placeholder.markdown(full_response)
-                    
+                    streamed_output = st.write_stream(answer_stream)
+                    full_response = normalize_stream_response(streamed_output)
                 else:
-                    # Non-streaming response
                     answer, sources = pipeline.query(prompt, k=k_docs, stream=False)
-                    display_message(answer, False)
+                    st.markdown(answer)
                     full_response = answer
-                
-                
-                display_sources(sources)
-                
-                # Add assistant response to chat history
-                st.session_state.messages.append({
-                    "role": "assistant", 
+
+            display_sources(sources)
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
                     "content": full_response,
-                    "sources": sources
-                })
-        
-        except Exception as e:
-            st.error(f"Error generating response: {e}")
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": "I'm sorry, I encountered an error while processing your question. Please try again.",
-                "sources": []
-            })
+                    "sources": sources,
+                }
+            )
+        except Exception as error:
+            st.error(f"Error generating response: {error}")
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": (
+                        "I hit an error while processing your question. "
+                        "Please try again."
+                    ),
+                    "sources": [],
+                }
+            )
 
 
 if __name__ == "__main__":
