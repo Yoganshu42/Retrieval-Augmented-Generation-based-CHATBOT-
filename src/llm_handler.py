@@ -3,6 +3,7 @@ LLM handler module for RAG chatbot.
 Handles language model initialization and response generation using Ollama.
 """
 
+import re
 from typing import Dict, Iterator, List
 import requests
 
@@ -83,7 +84,8 @@ class LLMHandler:
         context = "\n\n".join(context_parts)
         
         # prompt template
-        prompt = f"""Based on the following context, please provide a helpful and accurate answer to the user's question. If the answer cannot be found in the context, please say so.
+        prompt = f"""Answer only from the provided context. If the answer is not explicitly present, say that it is not available in the uploaded files.
+Keep the answer concise and do not invent facts.
 
 Context:
 {context}
@@ -190,20 +192,134 @@ class SimpleLLM:
     
     def __init__(self):
         self.model_name = "Simple Rule-based Model"
+        self.term_aliases = {
+            "ml": ["ml", "machine learning"],
+            "ai": ["ai", "artificial intelligence"],
+            "dl": ["dl", "deep learning"],
+            "ds": ["ds", "data science"],
+            "nlp": ["nlp", "natural language processing"],
+        }
+
+    def _query_terms(self, query: str) -> List[str]:
+        lowered = query.lower()
+        raw_tokens = re.findall(r"[a-zA-Z0-9]+", lowered)
+        terms = [token for token in raw_tokens if len(token) > 1]
+
+        expanded_terms: List[str] = []
+        for term in terms:
+            expanded_terms.append(term)
+            expanded_terms.extend(self.term_aliases.get(term, []))
+
+        # Keep order stable while removing duplicates.
+        return list(dict.fromkeys(expanded_terms))
+
+    def _split_sentences(self, text: str) -> List[str]:
+        sentences = re.split(r"(?<=[.!?])\s+", text or "")
+        return [sentence.strip() for sentence in sentences if sentence and sentence.strip()]
+
+    def _term_match_count(self, sentence: str, terms: List[str]) -> int:
+        lowered_sentence = sentence.lower()
+        count = 0
+        for term in terms:
+            if " " in term:
+                if term in lowered_sentence:
+                    count += 1
+            else:
+                if re.search(rf"\b{re.escape(term)}\b", lowered_sentence):
+                    count += 1
+        return count
+
+    def _sentence_score(self, sentence: str, query: str, terms: List[str], similarity_score: float) -> float:
+        lowered_sentence = sentence.lower()
+        score = max(similarity_score, 0.0) * 2.0
+
+        term_hits = self._term_match_count(sentence, terms)
+        score += float(term_hits)
+
+        for term in terms:
+            if " " in term and term in lowered_sentence:
+                score += 2.0
+
+        # Boost definition-like statements for "what is/define" style questions.
+        lowered_query = query.lower()
+        definition_query = any(phrase in lowered_query for phrase in ["what is", "define", "meaning of"])
+        if definition_query:
+            for term in terms:
+                if (
+                    f"{term} is" in lowered_sentence
+                    or f"{term} stands for" in lowered_sentence
+                    or f"{term} refers to" in lowered_sentence
+                ):
+                    score += 2.0
+
+        return score
+
+    def _extractive_answer(self, query: str, retrieved_chunks: List[Dict[str, str]]) -> str:
+        if not retrieved_chunks:
+            return "I could not find relevant information in the uploaded files."
+
+        terms = self._query_terms(query)
+        candidates: List[tuple[float, int, str, str]] = []
+        lowered_query = query.lower()
+        definition_query = any(phrase in lowered_query for phrase in ["what is", "define", "meaning of"])
+
+        for chunk in retrieved_chunks:
+            similarity_score = float(chunk.get("similarity_score", 0.0))
+            sentences = self._split_sentences(chunk.get("content", ""))
+            filename = chunk.get("filename", "unknown source")
+
+            for sentence in sentences:
+                score = self._sentence_score(sentence, query, terms, similarity_score)
+                term_hits = self._term_match_count(sentence, terms)
+                if score > 0:
+                    candidates.append((score, term_hits, sentence, filename))
+
+        if not candidates:
+            return "I could not find relevant information in the uploaded files."
+
+        candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        top_score = candidates[0][0]
+        if top_score < 2.5:
+            return (
+                "I could not find a direct answer in the uploaded files for that question. "
+                "Try asking with more context."
+            )
+
+        if definition_query and candidates[0][1] == 0:
+            return (
+                "I could not find a direct definition in the uploaded files for that question. "
+                "Try asking with the full term name."
+            )
+
+        selected: List[tuple[str, str]] = []
+        used_sentences = set()
+        for score, term_hits, sentence, filename in candidates:
+            normalized = sentence.strip().lower()
+            if normalized in used_sentences:
+                continue
+
+            if selected and (term_hits == 0 or score < max(2.5, top_score * 0.6)):
+                continue
+
+            selected.append((sentence.strip(), filename))
+            used_sentences.add(normalized)
+            if len(selected) >= 2:
+                break
+
+        if not selected:
+            return "I could not find relevant information in the uploaded files."
+
+        answer_lines = [f"Based on the uploaded files: {selected[0][0]}"]
+        if len(selected) > 1:
+            answer_lines.append(f"Additional context: {selected[1][0]}")
+
+        source_names = ", ".join(dict.fromkeys(filename for _, filename in selected))
+        answer_lines.append(f"Source: {source_names}")
+        return "\n\n".join(answer_lines)
     
     def answer_query(self, query: str, retrieved_chunks: List[Dict[str, str]], stream: bool = False):
         #Generate a simple response based on retrieved chunks
-        if not retrieved_chunks:
-            response = "I don't have enough information to answer your question."
-        else:
-            # Create a simple response from the most relevant chunk
-            best_chunk = retrieved_chunks[0]
-            relevant_content = best_chunk['content'][:300] + "..."
-            
-            response = f"Based on the available information: {relevant_content}"
-            
-            # Add source information
-            response += f"\n\nSource: {best_chunk['filename']}"
+        response = self._extractive_answer(query, retrieved_chunks)
         
         if stream:
             def response_stream() -> Iterator[str]:
